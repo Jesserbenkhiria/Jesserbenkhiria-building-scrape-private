@@ -27,10 +27,13 @@ export async function searchBing(
     url.searchParams.set('offset', offset.toString());
     url.searchParams.set('mkt', 'fr-TN');
     
+    const headers: Record<string, string> = {};
+    if (env.BING_KEY) {
+      headers['Ocp-Apim-Subscription-Key'] = env.BING_KEY;
+    }
+    
     const response = await fetch(url.toString(), {
-      headers: {
-        'Ocp-Apim-Subscription-Key': env.BING_KEY,
-      },
+      headers,
     });
     
     if (!response.ok) {

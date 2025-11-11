@@ -26,7 +26,8 @@ function AppContent() {
 
   const checkBackend = async () => {
     try {
-      const response = await axios.get('http://localhost:4000/health', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://51.68.172.145:4000';
+      const response = await axios.get(`${apiUrl}/health`, {
         timeout: 3000,
       });
       setIsBackendOnline(response.status === 200);

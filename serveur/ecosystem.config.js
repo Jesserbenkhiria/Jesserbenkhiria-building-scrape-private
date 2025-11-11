@@ -1,0 +1,43 @@
+module.exports = {
+  apps: [
+    {
+      name: 'tunisia-construction-api',
+      script: 'dist/server.js',
+      cwd: '/app/serveur',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 4000,
+      },
+      error_file: '/app/logs/server-error.log',
+      out_file: '/app/logs/server-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '1G',
+    },
+    {
+      name: 'react-app',
+      script: 'npm',
+      args: 'run preview',
+      cwd: '/app/my-react-app',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+      },
+      error_file: '/app/logs/react-error.log',
+      out_file: '/app/logs/react-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '500M',
+    },
+  ],
+};
+
