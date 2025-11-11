@@ -1,0 +1,351 @@
+import { Router, Request, Response } from 'express';
+import { USINE_KEYWORDS, GOVERNORATES } from '../lib/keywords';
+import { searchSerpApiLocalForKeywordCity } from '../datasources/serpapiLocal';
+import { bulkUpsertUsine } from '../store/mongo-repo';
+import { filterRelevantCompanies, adjustConfidence } from '../lib/filters';
+import { normalizeName, normalizeUrlDomain, normalizePhoneTN } from '../lib/normalize';
+import type { Usine } from '../types';
+
+const router = Router();
+
+/**
+ * POST /api/search-usines
+ * Recherche exclusive des usines via Serper (Google Search)
+ * Avec détection avancée de doublons
+ */
+router.post('/search-usines', async (req: Request, res: Response) => {
+  try {
+    const {
+      cities = GOVERNORATES, // Par défaut toutes les villes
+      limitPerQuery = 300,
+      keywords = USINE_KEYWORDS, // Permettre de personnaliser les mots-clés
+    } = req.body;
+
+    console.log('🏭 Recherche USINES via SerpApi Google Local');
+    console.log(`   Mots-clés: ${keywords.length}`);
+    console.log(`   Villes: ${cities.length}`);
+    console.log(`   Limite par requête: ${Math.min(limitPerQuery, 100)} (cap à 100 pour Serper)`);
+
+    let totalCollected = 0;
+    let totalFiltered = 0;
+    let totalDuplicatesSkipped = 0;
+    let totalSaved = 0;
+
+    // Cache pour détecter les doublons en temps réel
+    const seenUsines = new Map<string, Usine>();
+    const seenWebsites = new Set<string>();
+    const seenPhones = new Set<string>();
+
+    // Détection automatique du type d'usine basé sur les mots-clés
+    const detectUsineType = (keyword: string): 'ciment' | 'acier' | 'bois' | 'plastique' | 'verre' | 'autre' => {
+      const kw = keyword.toLowerCase();
+      if (kw.includes('ciment')) return 'ciment';
+      if (kw.includes('acier') || kw.includes('sidér') || kw.includes('laminoir')) return 'acier';
+      if (kw.includes('verre') || kw.includes('verrerie')) return 'verre';
+      if (kw.includes('bois') || kw.includes('scierie') || kw.includes('menuiserie')) return 'bois';
+      if (kw.includes('plastique') || kw.includes('plasturgie') || kw.includes('pvc')) return 'plastique';
+      return 'autre';
+    };
+
+    for (const keyword of keywords) {
+      for (const city of cities) {
+        try {
+          console.log(`\n  📍 Recherche: "${keyword}" à ${city}`);
+
+          // Rechercher via SerpApi Google Local uniquement
+          const serperResults = await searchSerpApiLocalForKeywordCity(
+            keyword,
+            city,
+            Math.min(limitPerQuery, 100)
+          );
+
+          totalCollected += serperResults.length;
+          console.log(`     Trouvé: ${serperResults.length} résultats`);
+
+          // Filtrer les entreprises non pertinentes
+          const relevantCompanies = filterRelevantCompanies(serperResults);
+          const filteredCount = serperResults.length - relevantCompanies.length;
+          totalFiltered += filteredCount;
+
+          if (filteredCount > 0) {
+            console.log(`     Filtré: ${filteredCount} non pertinents`);
+          }
+
+          if (relevantCompanies.length === 0) {
+            console.log(`     ⚠️  Aucune usine pertinente`);
+            continue;
+          }
+
+          // Détecter et éliminer les doublons AVANT la sauvegarde
+          const uniqueUsines: Omit<Usine, 'id'>[] = [];
+          let duplicatesInBatch = 0;
+
+          for (const company of relevantCompanies) {
+            // Ajuster la confiance
+            const adjustedCompany = adjustConfidence(company);
+
+            // Vérifier les doublons par plusieurs critères
+            let isDuplicate = false;
+
+            // 1. Vérifier par site web (le plus fiable)
+            if (adjustedCompany.website) {
+              const domain = normalizeUrlDomain(adjustedCompany.website);
+              if (domain && seenWebsites.has(domain)) {
+                isDuplicate = true;
+                console.log(`     🔁 Doublon (site): ${adjustedCompany.name}`);
+              } else if (domain) {
+                seenWebsites.add(domain);
+              }
+            }
+
+            // 2. Vérifier par téléphone
+            if (!isDuplicate && adjustedCompany.phones && adjustedCompany.phones.length > 0) {
+              for (const phone of adjustedCompany.phones) {
+                const normalized = normalizePhoneTN(phone);
+                if (normalized && seenPhones.has(normalized)) {
+                  isDuplicate = true;
+                  console.log(`     🔁 Doublon (tél): ${adjustedCompany.name}`);
+                  break;
+                }
+              }
+              if (!isDuplicate) {
+                adjustedCompany.phones.forEach(p => {
+                  const normalized = normalizePhoneTN(p);
+                  if (normalized) seenPhones.add(normalized);
+                });
+              }
+            }
+
+            // 3. Vérifier par nom normalisé
+            if (!isDuplicate) {
+              const normalizedName = normalizeName(adjustedCompany.name);
+              const dedupeKey = `${normalizedName}`;
+
+              if (seenUsines.has(dedupeKey)) {
+                // Comparer avec l'usine existante
+                const existing = seenUsines.get(dedupeKey)!;
+                
+                // Si même nom ET même ville, c'est un doublon certain
+                if (existing.city === adjustedCompany.city) {
+                  isDuplicate = true;
+                  console.log(`     🔁 Doublon (nom+ville): ${adjustedCompany.name}`);
+                }
+                // Si même nom mais ville différente, vérifier similarité
+                else {
+                  // Calculer similarité du nom complet
+                  const similarity = calculateSimilarity(existing.name, adjustedCompany.name);
+                  if (similarity > 0.95) {
+                    isDuplicate = true;
+                    console.log(`     🔁 Doublon (nom similaire): ${adjustedCompany.name}`);
+                  }
+                }
+              }
+
+              if (!isDuplicate) {
+                // Convertir Company en Usine
+                const usineType = detectUsineType(keyword);
+                const usine: Omit<Usine, 'id'> = {
+                  name: adjustedCompany.name,
+                  type: usineType,
+                  searchKeyword: keyword,
+                  rating: (adjustedCompany as any).rating,
+                  reviews: (adjustedCompany as any).reviews,
+                  capacity: undefined,
+                  products: [],
+                  certifications: [],
+                  phones: adjustedCompany.phones,
+                  emails: adjustedCompany.emails,
+                  website: adjustedCompany.website,
+                  social: adjustedCompany.social,
+                  address: adjustedCompany.address,
+                  city: adjustedCompany.city,
+                  country: adjustedCompany.country,
+                  lat: adjustedCompany.lat,
+                  lng: adjustedCompany.lng,
+                  sources: [
+                    ...adjustedCompany.sources,
+                    {
+                      kind: 'enrichment',
+                      timestamp: new Date().toISOString(),
+                    }
+                  ],
+                  confidence: adjustedCompany.confidence,
+                  created_at: adjustedCompany.created_at,
+                  updated_at: adjustedCompany.updated_at,
+                };
+                
+                seenUsines.set(dedupeKey, usine as Usine);
+                uniqueUsines.push(usine);
+              }
+            }
+
+            if (isDuplicate) {
+              duplicatesInBatch++;
+              totalDuplicatesSkipped++;
+            }
+          }
+
+          if (duplicatesInBatch > 0) {
+            console.log(`     Doublons détectés: ${duplicatesInBatch}`);
+          }
+
+          // Sauvegarder uniquement les usines uniques
+          if (uniqueUsines.length > 0) {
+            const inserted = await bulkUpsertUsine(uniqueUsines);
+
+            totalSaved += inserted;
+            console.log(`     ✅ Sauvegardé: ${inserted} nouvelles usines`);
+          }
+
+        } catch (error) {
+          console.error(`  ❌ Erreur pour "${keyword}" à ${city}:`, error);
+        }
+      }
+    }
+
+    console.log(`\n✅ Recherche terminée !`);
+    console.log(`   Total collecté: ${totalCollected}`);
+    console.log(`   Total filtré: ${totalFiltered}`);
+    console.log(`   Doublons évités: ${totalDuplicatesSkipped}`);
+    console.log(`   Total sauvegardé: ${totalSaved}`);
+
+    res.json({
+      success: true,
+      summary: {
+        totalCollected,
+        totalFiltered,
+        totalDuplicatesSkipped,
+        totalSaved,
+        totalProcessed: totalCollected - totalFiltered - totalDuplicatesSkipped,
+      },
+      details: {
+        keywords: keywords.length,
+        cities: cities.length,
+        queriesExecuted: keywords.length * cities.length,
+      },
+      message: `Recherche terminée: ${totalSaved} usines sauvegardées (${totalDuplicatesSkipped} doublons évités)`
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur dans /api/search-usines:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la recherche des usines',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * GET /api/search-usines/status
+ * Retourne les statistiques actuelles des usines
+ */
+router.get('/search-usines/status', async (_req: Request, res: Response) => {
+  try {
+    const { getMongo } = await import('../store/mongo');
+    const db = await getMongo();
+    const collection = db.collection('usine');
+
+    const total = await collection.countDocuments();
+    const withWebsite = await collection.countDocuments({ website: { $exists: true, $ne: null } });
+    const withPhone = await collection.countDocuments({ phones: { $exists: true, $ne: [] } });
+    const withCoordinates = await collection.countDocuments({ 
+      lat: { $exists: true, $ne: null }, 
+      lng: { $exists: true, $ne: null } 
+    });
+
+    // Top 10 villes
+    const topCities = await collection.aggregate([
+      { $match: { city: { $exists: true, $ne: null } } },
+      { $group: { _id: '$city', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]).toArray();
+
+    // Répartition par type
+    const byType = await collection.aggregate([
+      { $match: { type: { $exists: true, $ne: null } } },
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]).toArray();
+
+    // Top produits
+    const topProducts = await collection.aggregate([
+      { $unwind: '$products' },
+      { $group: { _id: '$products', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]).toArray();
+
+    res.json({
+      success: true,
+      statistics: {
+        total,
+        withWebsite,
+        withPhone,
+        withCoordinates,
+        completenessPercentage: {
+          website: total > 0 ? ((withWebsite / total) * 100).toFixed(1) + '%' : '0%',
+          phone: total > 0 ? ((withPhone / total) * 100).toFixed(1) + '%' : '0%',
+          coordinates: total > 0 ? ((withCoordinates / total) * 100).toFixed(1) + '%' : '0%',
+        }
+      },
+      topCities: topCities.map(c => ({ city: c._id, count: c.count })),
+      byType: byType.map(t => ({ type: t._id, count: t.count })),
+      topProducts: topProducts.map(p => ({ product: p._id, count: p.count })),
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur dans /api/search-usines/status:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la récupération des statistiques',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * Calcule la similarité entre deux chaînes (simple Levenshtein ratio)
+ */
+function calculateSimilarity(str1: string, str2: string): number {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+
+  if (longer.length === 0) return 1.0;
+
+  const editDistance = levenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+/**
+ * Calcule la distance de Levenshtein entre deux chaînes
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[str2.length][str1.length];
+}
+
+export default router;
+

@@ -1,0 +1,310 @@
+.app {
+  min-height: 100vh;
+  background: #1a1a1a;
+  padding: 32px 24px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 16px 12px;
+  }
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 32px;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.app-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 400;
+}
+
+.app-main {
+  max-width: 1600px;
+  margin: 0 auto;
+  background: #1f1f1f;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid #434343;
+  position: relative;
+  z-index: 1;
+}
+
+.company-list-container {
+  width: 100%;
+}
+
+/* Ant Design Tabs customization for dark mode */
+.ant-tabs-card > .ant-tabs-content {
+  margin-top: 0;
+}
+
+.ant-tabs-card > .ant-tabs-content > .ant-tabs-tabpane {
+  background: transparent;
+}
+
+.ant-tabs-card .ant-tabs-tab {
+  border-radius: 8px 8px 0 0;
+  font-weight: 500;
+  font-size: 15px;
+  background: #262626;
+  border-color: #434343;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ant-tabs-card .ant-tabs-tab:hover {
+  color: #ffffff;
+}
+
+.ant-tabs-card .ant-tabs-tab-active {
+  background: #1f1f1f;
+  border-bottom-color: #1f1f1f;
+  color: #ffffff;
+}
+
+/* Table enhancements for dark mode */
+.ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1f1f1f;
+}
+
+.ant-table-thead > tr > th {
+  background: #262626;
+  color: #ffffff;
+  font-weight: 600;
+  border-bottom: 1px solid #434343;
+}
+
+.ant-table-thead > tr > th.ant-table-column-sort {
+  background: #2a2a2a;
+}
+
+.ant-table-thead > tr > th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.ant-table-thead > tr > th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.ant-table-tbody > tr {
+  background: #1f1f1f;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #262626;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #434343;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Card enhancements for dark mode */
+.ant-card {
+  border-radius: 12px;
+  background: #1f1f1f;
+  border: 1px solid #434343;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.ant-card-head {
+  background: #262626;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid #434343;
+}
+
+.ant-card-head-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.ant-card-body {
+  background: #1f1f1f;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Input and Select for dark mode */
+.ant-input,
+.ant-select-selector {
+  background: #262626 !important;
+  border-color: #434343 !important;
+  color: #ffffff !important;
+}
+
+.ant-input::placeholder,
+.ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.ant-input:hover,
+.ant-select-selector:hover {
+  border-color: #595959 !important;
+}
+
+.ant-input:focus,
+.ant-select-focused .ant-select-selector {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* Pagination for dark mode */
+.ant-pagination {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: #1f1f1f !important;
+}
+
+.ant-table-pagination {
+  background: #1f1f1f !important;
+  margin-top: 16px !important;
+  padding: 16px !important;
+  border-radius: 8px !important;
+  border-top: 1px solid #434343 !important;
+}
+
+.ant-table-pagination .ant-pagination {
+  background: transparent !important;
+  margin: 0 !important;
+}
+
+.ant-table-wrapper .ant-table-pagination {
+  background: #1f1f1f !important;
+}
+
+.ant-table-wrapper .ant-table-pagination > * {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Google Maps InfoWindow dark theme styling */
+.gm-style .gm-style-iw-c {
+  background-color: #1f1f1f !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  background-color: #1f1f1f !important;
+}
+
+.gm-style .gm-style-iw-t::after {
+  background-color: #1f1f1f !important;
+}
+
+.gm-style-iw-button {
+  filter: invert(1) !important;
+}
+
+.ant-pagination-item {
+  background: #262626 !important;
+  border-color: #434343 !important;
+}
+
+.ant-pagination-item a {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-pagination-item:hover {
+  border-color: #1890ff !important;
+}
+
+.ant-pagination-item:hover a {
+  color: #1890ff !important;
+}
+
+.ant-pagination-item-active {
+  background: #1890ff !important;
+  border-color: #1890ff !important;
+}
+
+.ant-pagination-item-active a {
+  color: #ffffff !important;
+}
+
+.ant-pagination-prev,
+.ant-pagination-next {
+  background: #262626 !important;
+  border-color: #434343 !important;
+}
+
+.ant-pagination-prev a,
+.ant-pagination-next a {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-pagination-prev:hover,
+.ant-pagination-next:hover {
+  border-color: #1890ff !important;
+}
+
+.ant-pagination-prev:hover a,
+.ant-pagination-next:hover a {
+  color: #1890ff !important;
+}
+
+.ant-pagination-jump-prev,
+.ant-pagination-jump-next {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-pagination-options {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ant-pagination-options .ant-select-selector {
+  background: #262626 !important;
+  border-color: #434343 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-pagination-total-text {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Alert enhancements */
+.ant-alert {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .app {
+    padding: 16px;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .app-main {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+}

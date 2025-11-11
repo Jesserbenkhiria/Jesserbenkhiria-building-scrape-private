@@ -1,0 +1,377 @@
+{
+  "info": {
+    "name": "Tunisia Construction Finder",
+    "description": "API pour trouver des entreprises de construction et fournisseurs en Tunisie",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["health"]
+        },
+        "description": "Vérifie que le serveur fonctionne"
+      }
+    },
+    {
+      "name": "Search - Construction Tunis",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/search?category=construction&source=places&city=Tunis&limit=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "category",
+              "value": "construction",
+              "description": "construction ou fournisseur"
+            },
+            {
+              "key": "source",
+              "value": "places",
+              "description": "places pour Google uniquement"
+            },
+            {
+              "key": "city",
+              "value": "Tunis"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Recherche des bureaux de construction à Tunis"
+      }
+    },
+    {
+      "name": "Search - Fournisseurs Sfax",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/search?category=fournisseur&source=places&city=Sfax&limit=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "category",
+              "value": "fournisseur"
+            },
+            {
+              "key": "source",
+              "value": "places"
+            },
+            {
+              "key": "city",
+              "value": "Sfax"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Recherche des fournisseurs/quincailleries à Sfax"
+      }
+    },
+    {
+      "name": "Run Seed - Tunis Only",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categories\": [\"construction\", \"fournisseur\"],\n  \"cities\": [\"Tunis\"],\n  \"sources\": [\"places\"],\n  \"limitPerQuery\": 20\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/run-seed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "run-seed"]
+        },
+        "description": "Collecte complète pour Tunis uniquement (31 requêtes)"
+      }
+    },
+    {
+      "name": "Run Seed - 3 Cities",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categories\": [\"construction\", \"fournisseur\"],\n  \"cities\": [\"Tunis\", \"Sfax\", \"Sousse\"],\n  \"sources\": [\"places\"],\n  \"limitPerQuery\": 15\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/run-seed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "run-seed"]
+        },
+        "description": "Collecte pour 3 villes principales (93 requêtes)"
+      }
+    },
+    {
+      "name": "Run Seed - Construction Only",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categories\": [\"construction\"],\n  \"cities\": [\"Tunis\", \"Sfax\", \"Sousse\"],\n  \"sources\": [\"places\"],\n  \"limitPerQuery\": 20\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/run-seed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "run-seed"]
+        },
+        "description": "Seulement construction dans 3 villes (48 requêtes)"
+      }
+    },
+    {
+      "name": "List All Companies",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/companies?limit=100",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "companies"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "description": "Liste toutes les entreprises enregistrées"
+      }
+    },
+    {
+      "name": "List Companies - With Phone",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/companies?hasPhone=true&limit=100",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "companies"],
+          "query": [
+            {
+              "key": "hasPhone",
+              "value": "true"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "description": "Uniquement les entreprises avec numéro de téléphone"
+      }
+    },
+    {
+      "name": "List Companies - Construction Only",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/companies?category=construction&limit=50",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "companies"],
+          "query": [
+            {
+              "key": "category",
+              "value": "construction"
+            },
+            {
+              "key": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "description": "Uniquement les entreprises de construction"
+      }
+    },
+    {
+      "name": "Search Companies - Text Query",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/companies?q=matériaux&limit=50",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "companies"],
+          "query": [
+            {
+              "key": "q",
+              "value": "matériaux",
+              "description": "Recherche textuelle"
+            },
+            {
+              "key": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "description": "Recherche textuelle dans les entreprises"
+      }
+    },
+    {
+      "name": "Search - Serper Only",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/search?category=construction&source=serper&city=Tunis&limit=20",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "category",
+              "value": "construction"
+            },
+            {
+              "key": "source",
+              "value": "serper",
+              "description": "Serper.dev uniquement"
+            },
+            {
+              "key": "city",
+              "value": "Tunis"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "description": "Recherche avec Serper.dev (Google Search)"
+      }
+    },
+    {
+      "name": "Search - All Sources (Serper + Places + Bing)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/search?category=fournisseur&source=all&city=Sfax&limit=30",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "category",
+              "value": "fournisseur"
+            },
+            {
+              "key": "source",
+              "value": "all",
+              "description": "Toutes les sources"
+            },
+            {
+              "key": "city",
+              "value": "Sfax"
+            },
+            {
+              "key": "limit",
+              "value": "30"
+            }
+          ]
+        },
+        "description": "Recherche avec toutes les sources disponibles"
+      }
+    },
+    {
+      "name": "Run Seed - Serper Only",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categories\": [\"construction\", \"fournisseur\"],\n  \"cities\": [\"Tunis\", \"Sfax\"],\n  \"sources\": [\"serper\"],\n  \"limitPerQuery\": 20\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/run-seed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "run-seed"]
+        },
+        "description": "Collecte avec Serper uniquement (62 requêtes)"
+      }
+    },
+    {
+      "name": "Run Seed - All Sources MAXIMUM",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"categories\": [\"construction\", \"fournisseur\"],\n  \"cities\": [\"Tunis\", \"Sfax\", \"Sousse\"],\n  \"sources\": [\"all\"],\n  \"limitPerQuery\": 15\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/run-seed",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "run-seed"]
+        },
+        "description": "Collecte MAXIMALE avec toutes les sources (⚠️ ~280 requêtes API !)"
+      }
+    }
+  ]
+}
