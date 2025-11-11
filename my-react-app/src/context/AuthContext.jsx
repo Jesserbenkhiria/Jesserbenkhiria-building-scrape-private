@@ -3,7 +3,10 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
-const API_BASE_URL = 'http://localhost:4000/api';
+// Use environment variable or fallback to production server
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : 'http://51.68.172.145:4000/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

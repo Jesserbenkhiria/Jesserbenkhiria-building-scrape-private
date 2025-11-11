@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // Direct API URL to backend server on port 4000
-const API_BASE_URL = 'http://localhost:4000/api';
+// Use environment variable or fallback to production server
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : 'http://51.68.172.145:4000/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({

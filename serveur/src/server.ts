@@ -33,15 +33,18 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
       'http://localhost:5173', // Vite dev server
+      'http://localhost:5174', // Vite production server
       'http://localhost:3000', // React dev server (alternative)
       'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
       'http://127.0.0.1:3000',
+      'http://51.68.172.145:5174', // Production server
     ];
     
     // In development, allow all localhost origins

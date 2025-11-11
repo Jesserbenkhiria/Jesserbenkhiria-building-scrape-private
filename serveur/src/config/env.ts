@@ -28,6 +28,8 @@ const EnvSchema = z.object({
   REQUESTS_PER_SECOND: z.string().transform(Number).default('3'),
   MONGO_URI: z.string().optional(),
   JWT_SECRET: z.string().default('topsecret2025'),
+  ADMIN_USERNAME: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
 });
 
 const parseEnv = () => {
