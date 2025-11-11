@@ -15,10 +15,9 @@ router.get('/', async (req: Request, res: Response) => {
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     const city = req.query.city ? (req.query.city as string) : undefined;
     const q = req.query.q ? (req.query.q as string) : undefined;
-    const type = req.query.type ? (req.query.type as string) : undefined;
     const keyword = req.query.keyword ? (req.query.keyword as string) : undefined;
     
-    const result = await getAllUsines(limit, offset, city, q, type, keyword);
+    const result = await getAllUsines(limit, offset, city, q, keyword);
     
     // Calculer les informations de pagination
     const currentPage = Math.floor(offset / limit) + 1;
@@ -45,7 +44,6 @@ router.get('/', async (req: Request, res: Response) => {
         offset,
         city,
         q,
-        type,
         keyword,
       },
     });
@@ -59,21 +57,21 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/usine/types
- * Récupère tous les types d'usines uniques
+ * GET /api/usine/categories
+ * Récupère toutes les catégories d'usines uniques
  */
-router.get('/types', async (req: Request, res: Response) => {
+router.get('/categories', async (req: Request, res: Response) => {
   try {
-    const types = await getAllUsineTypes();
+    const categories = await getAllUsineTypes();
     
     res.json({
-      types,
-      count: types.length,
+      categories,
+      count: categories.length,
     });
   } catch (error) {
-    console.error('Erreur dans /api/usine/types:', error);
+    console.error('Erreur dans /api/usine/categories:', error);
     res.status(500).json({
-      error: 'Erreur lors de la récupération des types d\'usines',
+      error: 'Erreur lors de la récupération des catégories d\'usines',
       details: error instanceof Error ? error.message : String(error),
     });
   }

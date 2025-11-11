@@ -1,30 +1,30 @@
 import { Router, Request, Response } from 'express';
 import { USINE_KEYWORDS, GOVERNORATES } from '../lib/keywords';
-import { searchSerpApiLocalForKeywordCity } from '../datasources/serpapiLocal';
+import { searchGooglePlacesForKeywordCity } from '../datasources/googlePlaces';
 import { bulkUpsertUsine } from '../store/mongo-repo';
 import { filterRelevantCompanies, adjustConfidence } from '../lib/filters';
 import { normalizeName, normalizeUrlDomain, normalizePhoneTN } from '../lib/normalize';
-import type { Usine } from '../types';
+import type { Company } from '../types';
 
 const router = Router();
 
 /**
  * POST /api/search-usines
- * Recherche exclusive des usines via Serper (Google Search)
+ * Recherche exclusive des usines via Google Places
  * Avec détection avancée de doublons
  */
 router.post('/search-usines', async (req: Request, res: Response) => {
   try {
     const {
       cities = GOVERNORATES, // Par défaut toutes les villes
-      limitPerQuery = 300,
+      limitPerQuery = 100, // 100 résultats par recherche (Google Places max ~60)
       keywords = USINE_KEYWORDS, // Permettre de personnaliser les mots-clés
     } = req.body;
 
-    console.log('🏭 Recherche USINES via SerpApi Google Local');
+    console.log('🏭 Recherche USINES via Google Places');
     console.log(`   Mots-clés: ${keywords.length}`);
     console.log(`   Villes: ${cities.length}`);
-    console.log(`   Limite par requête: ${Math.min(limitPerQuery, 100)} (cap à 100 pour Serper)`);
+    console.log(`   Limite par requête: ${limitPerQuery}`);
 
     let totalCollected = 0;
     let totalFiltered = 0;
@@ -32,39 +32,29 @@ router.post('/search-usines', async (req: Request, res: Response) => {
     let totalSaved = 0;
 
     // Cache pour détecter les doublons en temps réel
-    const seenUsines = new Map<string, Usine>();
+    const seenCompanies = new Map<string, Company>();
     const seenWebsites = new Set<string>();
     const seenPhones = new Set<string>();
-
-    // Détection automatique du type d'usine basé sur les mots-clés
-    const detectUsineType = (keyword: string): 'ciment' | 'acier' | 'bois' | 'plastique' | 'verre' | 'autre' => {
-      const kw = keyword.toLowerCase();
-      if (kw.includes('ciment')) return 'ciment';
-      if (kw.includes('acier') || kw.includes('sidér') || kw.includes('laminoir')) return 'acier';
-      if (kw.includes('verre') || kw.includes('verrerie')) return 'verre';
-      if (kw.includes('bois') || kw.includes('scierie') || kw.includes('menuiserie')) return 'bois';
-      if (kw.includes('plastique') || kw.includes('plasturgie') || kw.includes('pvc')) return 'plastique';
-      return 'autre';
-    };
 
     for (const keyword of keywords) {
       for (const city of cities) {
         try {
           console.log(`\n  📍 Recherche: "${keyword}" à ${city}`);
 
-          // Rechercher via SerpApi Google Local uniquement
-          const serperResults = await searchSerpApiLocalForKeywordCity(
+          // Rechercher via Google Places uniquement
+          const placesResults = await searchGooglePlacesForKeywordCity(
             keyword,
             city,
-            Math.min(limitPerQuery, 100)
+            'usine',
+            limitPerQuery
           );
 
-          totalCollected += serperResults.length;
-          console.log(`     Trouvé: ${serperResults.length} résultats`);
+          totalCollected += placesResults.length;
+          console.log(`     Trouvé: ${placesResults.length} résultats`);
 
           // Filtrer les entreprises non pertinentes
-          const relevantCompanies = filterRelevantCompanies(serperResults);
-          const filteredCount = serperResults.length - relevantCompanies.length;
+          const relevantCompanies = filterRelevantCompanies(placesResults);
+          const filteredCount = placesResults.length - relevantCompanies.length;
           totalFiltered += filteredCount;
 
           if (filteredCount > 0) {
@@ -77,7 +67,7 @@ router.post('/search-usines', async (req: Request, res: Response) => {
           }
 
           // Détecter et éliminer les doublons AVANT la sauvegarde
-          const uniqueUsines: Omit<Usine, 'id'>[] = [];
+          const uniqueCompanies: Company[] = [];
           let duplicatesInBatch = 0;
 
           for (const company of relevantCompanies) {
@@ -121,9 +111,9 @@ router.post('/search-usines', async (req: Request, res: Response) => {
               const normalizedName = normalizeName(adjustedCompany.name);
               const dedupeKey = `${normalizedName}`;
 
-              if (seenUsines.has(dedupeKey)) {
-                // Comparer avec l'usine existante
-                const existing = seenUsines.get(dedupeKey)!;
+              if (seenCompanies.has(dedupeKey)) {
+                // Comparer avec l'entreprise existante
+                const existing = seenCompanies.get(dedupeKey)!;
                 
                 // Si même nom ET même ville, c'est un doublon certain
                 if (existing.city === adjustedCompany.city) {
@@ -142,46 +132,15 @@ router.post('/search-usines', async (req: Request, res: Response) => {
               }
 
               if (!isDuplicate) {
-                // Convertir Company en Usine
-                const usineType = detectUsineType(keyword);
-                const usine: Omit<Usine, 'id'> = {
-                  name: adjustedCompany.name,
-                  type: usineType,
-                  searchKeyword: keyword,
-                  rating: (adjustedCompany as any).rating,
-                  reviews: (adjustedCompany as any).reviews,
-                  capacity: undefined,
-                  products: [],
-                  certifications: [],
-                  phones: adjustedCompany.phones,
-                  emails: adjustedCompany.emails,
-                  website: adjustedCompany.website,
-                  social: adjustedCompany.social,
-                  address: adjustedCompany.address,
-                  city: adjustedCompany.city,
-                  country: adjustedCompany.country,
-                  lat: adjustedCompany.lat,
-                  lng: adjustedCompany.lng,
-                  sources: [
-                    ...adjustedCompany.sources,
-                    {
-                      kind: 'enrichment',
-                      timestamp: new Date().toISOString(),
-                    }
-                  ],
-                  confidence: adjustedCompany.confidence,
-                  created_at: adjustedCompany.created_at,
-                  updated_at: adjustedCompany.updated_at,
-                };
-                
-                seenUsines.set(dedupeKey, usine as Usine);
-                uniqueUsines.push(usine);
+                seenCompanies.set(dedupeKey, adjustedCompany);
               }
             }
 
             if (isDuplicate) {
               duplicatesInBatch++;
               totalDuplicatesSkipped++;
+            } else {
+              uniqueCompanies.push(adjustedCompany);
             }
           }
 
@@ -190,8 +149,9 @@ router.post('/search-usines', async (req: Request, res: Response) => {
           }
 
           // Sauvegarder uniquement les usines uniques
-          if (uniqueUsines.length > 0) {
-            const inserted = await bulkUpsertUsine(uniqueUsines);
+          if (uniqueCompanies.length > 0) {
+            const companiesWithoutId = uniqueCompanies.map(({ id, ...rest }) => rest);
+            const inserted = await bulkUpsertUsine(companiesWithoutId);
 
             totalSaved += inserted;
             console.log(`     ✅ Sauvegardé: ${inserted} nouvelles usines`);
@@ -261,17 +221,10 @@ router.get('/search-usines/status', async (_req: Request, res: Response) => {
       { $limit: 10 }
     ]).toArray();
 
-    // Répartition par type
-    const byType = await collection.aggregate([
-      { $match: { type: { $exists: true, $ne: null } } },
-      { $group: { _id: '$type', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]).toArray();
-
-    // Top produits
-    const topProducts = await collection.aggregate([
-      { $unwind: '$products' },
-      { $group: { _id: '$products', count: { $sum: 1 } } },
+    // Top 10 mots-clés
+    const topKeywords = await collection.aggregate([
+      { $match: { searchKeyword: { $exists: true, $ne: null } } },
+      { $group: { _id: '$searchKeyword', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 }
     ]).toArray();
@@ -290,8 +243,7 @@ router.get('/search-usines/status', async (_req: Request, res: Response) => {
         }
       },
       topCities: topCities.map(c => ({ city: c._id, count: c.count })),
-      byType: byType.map(t => ({ type: t._id, count: t.count })),
-      topProducts: topProducts.map(p => ({ product: p._id, count: p.count })),
+      topKeywords: topKeywords.map(k => ({ keyword: k._id, count: k.count })),
     });
 
   } catch (error) {

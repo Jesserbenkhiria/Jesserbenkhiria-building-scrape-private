@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, Select, Table, Tag, Space, Typography, Button, Input, Row, Col } from 'antd';
-import { PhoneOutlined, MailOutlined, GlobalOutlined, EnvironmentOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { Card, Select, Table, Tag, Space, Typography, Button, Input, Row, Col, message } from 'antd';
+import { PhoneOutlined, MailOutlined, GlobalOutlined, EnvironmentOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { getCities, getGoogleMapsKey, getKeywords } from '../services/api';
 import CompanyMap from './CompanyMap';
+import { convertToCSV, downloadCSV, formatCompaniesForCSV, generateFilename } from '../utils/csvExport';
 
 const { Option } = Select;
 const { Text, Link } = Typography;
@@ -142,6 +143,54 @@ function CompanyList({ fetchFunction, category, active }) {
   const handleTableChange = (pagination) => {
     setCurrentPage(pagination.current);
     setPageSize(pagination.pageSize);
+  };
+
+  // Export current page to CSV
+  const handleExportCurrentPage = () => {
+    try {
+      if (companies.length === 0) {
+        message.warning('Aucune donnée à exporter');
+        return;
+      }
+
+      const formattedData = formatCompaniesForCSV(companies);
+      const csvContent = convertToCSV(formattedData);
+      const filename = generateFilename(`${category}_page_${currentPage}`);
+      
+      downloadCSV(csvContent, filename);
+      message.success(`${companies.length} entreprises exportées avec succès !`);
+    } catch (error) {
+      console.error('Error exporting current page:', error);
+      message.error('Erreur lors de l\'export');
+    }
+  };
+
+  // Export all data to CSV
+  const handleExportAll = async () => {
+    try {
+      message.loading('Export en cours...', 0);
+      
+      // Fetch all data without pagination
+      const allData = await fetchFunction(10000, 0, selectedCity, searchQuery, selectedKeyword);
+      
+      if (!allData.items || allData.items.length === 0) {
+        message.destroy();
+        message.warning('Aucune donnée à exporter');
+        return;
+      }
+
+      const formattedData = formatCompaniesForCSV(allData.items);
+      const csvContent = convertToCSV(formattedData);
+      const filename = generateFilename(`${category}_complet`);
+      
+      downloadCSV(csvContent, filename);
+      message.destroy();
+      message.success(`${allData.items.length} entreprises exportées avec succès !`);
+    } catch (error) {
+      console.error('Error exporting all data:', error);
+      message.destroy();
+      message.error('Erreur lors de l\'export complet');
+    }
   };
 
   const columns = [
@@ -373,6 +422,22 @@ function CompanyList({ fetchFunction, category, active }) {
                 </Option>
               ))}
             </Select>
+            <Button
+              type="default"
+              icon={<DownloadOutlined />}
+              onClick={handleExportCurrentPage}
+              disabled={companies.length === 0}
+            >
+              Exporter Page
+            </Button>
+            <Button
+              type="primary"
+              icon={<FileExcelOutlined />}
+              onClick={handleExportAll}
+              disabled={total === 0}
+            >
+              Exporter Tout ({total})
+            </Button>
             {googleMapsKey && companies.some(c => c.lat && c.lng) && (
               <Button
                 type={showMap ? 'default' : 'primary'}

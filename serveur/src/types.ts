@@ -14,7 +14,7 @@ export type SourceRef = z.infer<typeof SourceRefSchema>;
 export const CompanySchema = z.object({
   id: z.number().optional(),
   name: z.string(),
-  category: z.enum(['construction', 'fournisseur']),
+  category: z.enum(['construction', 'fournisseur', 'usine']),
   searchKeyword: z.string().optional(), // Le mot-clé qui a permis de trouver l'entreprise
   phones: z.array(z.string()).default([]),
   emails: z.array(z.string()).default([]),
@@ -33,14 +33,12 @@ export const CompanySchema = z.object({
 
 export type Company = z.infer<typeof CompanySchema>;
 
-// Schéma pour une usine
+// Schéma pour une usine (identique à Company)
 export const UsineSchema = z.object({
   id: z.number().optional(),
   name: z.string(),
-  type: z.enum(['ciment', 'acier', 'bois', 'plastique', 'verre', 'autre']),
-  capacity: z.string().optional(), // Capacité de production (ex: "1000 tonnes/mois")
-  products: z.array(z.string()).default([]), // Liste des produits fabriqués
-  certifications: z.array(z.string()).default([]), // Certifications (ISO, etc.)
+  category: z.enum(['construction', 'fournisseur', 'usine']),
+  searchKeyword: z.string().optional(), // Le mot-clé qui a permis de trouver l'usine
   phones: z.array(z.string()).default([]),
   emails: z.array(z.string()).default([]),
   website: z.string().optional(),
@@ -54,9 +52,6 @@ export const UsineSchema = z.object({
   confidence: z.number().min(0).max(1).default(0.5),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
-  searchKeyword: z.string().optional(), // Mot-clé ayant permis de trouver l'usine
-  rating: z.number().optional(),
-  reviews: z.number().optional(),
 });
 
 export type Usine = z.infer<typeof UsineSchema>;

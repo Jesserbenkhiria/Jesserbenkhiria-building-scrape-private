@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, Select, Table, Tag, Space, Typography, Button, Input, Row, Col } from 'antd';
-import { PhoneOutlined, MailOutlined, GlobalOutlined, EnvironmentOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined, BuildOutlined } from '@ant-design/icons';
+import { Card, Select, Table, Tag, Space, Typography, Button, Input, Row, Col, message } from 'antd';
+import { PhoneOutlined, MailOutlined, GlobalOutlined, EnvironmentOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined, BuildOutlined, DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { getCities, getGoogleMapsKey, getUsineKeywords } from '../services/api';
 import CompanyMap from './CompanyMap';
+import { convertToCSV, downloadCSV, formatCompaniesForCSV, generateFilename } from '../utils/csvExport';
 
 const { Option } = Select;
 const { Text, Link } = Typography;
@@ -147,6 +148,54 @@ function UsineList({ fetchFunction, active }) {
     setShowMap(!showMap);
   };
 
+  // Export current page to CSV
+  const handleExportCurrentPage = () => {
+    try {
+      if (usines.length === 0) {
+        message.warning('Aucune donnée à exporter');
+        return;
+      }
+
+      const formattedData = formatCompaniesForCSV(usines);
+      const csvContent = convertToCSV(formattedData);
+      const filename = generateFilename(`usines_page_${currentPage}`);
+      
+      downloadCSV(csvContent, filename);
+      message.success(`${usines.length} usines exportées avec succès !`);
+    } catch (error) {
+      console.error('Error exporting current page:', error);
+      message.error('Erreur lors de l\'export');
+    }
+  };
+
+  // Export all data to CSV
+  const handleExportAll = async () => {
+    try {
+      message.loading('Export en cours...', 0);
+      
+      // Fetch all data without pagination
+      const allData = await fetchFunction(10000, 0, selectedCity, searchQuery, selectedKeyword);
+      
+      if (!allData.items || allData.items.length === 0) {
+        message.destroy();
+        message.warning('Aucune donnée à exporter');
+        return;
+      }
+
+      const formattedData = formatCompaniesForCSV(allData.items);
+      const csvContent = convertToCSV(formattedData);
+      const filename = generateFilename('usines_complet');
+      
+      downloadCSV(csvContent, filename);
+      message.destroy();
+      message.success(`${allData.items.length} usines exportées avec succès !`);
+    } catch (error) {
+      console.error('Error exporting all data:', error);
+      message.destroy();
+      message.error('Erreur lors de l\'export complet');
+    }
+  };
+
   // Couleur déterministe pour un mot-clé
   const getKeywordColor = (keyword) => {
     if (!keyword) return 'default';
@@ -160,98 +209,13 @@ function UsineList({ fetchFunction, active }) {
 
   const columns = [
     {
-      title: 'Nom',
+      title: 'Nom de l\'Usine',
       dataIndex: 'name',
       key: 'name',
-      width: 300,
-      render: (text, record) => (
-        <Space direction="vertical" size="small">
-          <Text strong style={{ fontSize: '14px' }}>
-            {text}
-          </Text>
-          <Tag color={getKeywordColor(record.searchKeyword)}>
-            {record.searchKeyword || '—'}
-          </Tag>
-        </Space>
-      ),
-    },
-    {
-      title: 'Capacité',
-      dataIndex: 'capacity',
-      key: 'capacity',
-      width: 150,
-      render: (capacity) => capacity || <Text type="secondary">-</Text>,
-    },
-    {
-      title: 'Produits',
-      dataIndex: 'products',
-      key: 'products',
-      width: 220,
-      render: (products) => (
-        <Space direction="vertical" size="small" style={{ maxWidth: '100%' }}>
-          {products && products.length > 0 ? (
-            products.slice(0, 3).map((product, index) => (
-              <Tag key={index} style={{ fontSize: '11px' }}>
-                {product}
-              </Tag>
-            ))
-          ) : (
-            <Text type="secondary">-</Text>
-          )}
-          {products && products.length > 3 && (
-            <Text type="secondary" style={{ fontSize: '11px' }}>
-              +{products.length - 3} autres
-            </Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Note',
-      dataIndex: 'rating',
-      key: 'rating',
-      width: 100,
-      render: (rating) => (typeof rating === 'number' ? rating : <Text type="secondary">-</Text>),
-    },
-    {
-      title: 'Avis',
-      dataIndex: 'reviews',
-      key: 'reviews',
-      width: 100,
-      render: (reviews) => (typeof reviews === 'number' ? reviews : <Text type="secondary">-</Text>),
-    },
-    {
-      title: 'Contact',
-      key: 'contact',
-      width: 220,
-      render: (_, record) => (
-        <Space direction="vertical" size="small">
-          {record.phones && record.phones.length > 0 ? (
-            <Space size="small">
-              <PhoneOutlined style={{ color: '#52c41a' }} />
-              <Text copyable style={{ fontSize: '12px' }}>
-                {record.phones[0]}
-              </Text>
-            </Space>
-          ) : null}
-          {record.emails && record.emails.length > 0 ? (
-            <Space size="small">
-              <MailOutlined style={{ color: '#1890ff' }} />
-              <Text copyable style={{ fontSize: '12px' }}>
-                {record.emails[0]}
-              </Text>
-            </Space>
-          ) : null}
-          {record.website ? (
-            <Space size="small">
-              <GlobalOutlined style={{ color: '#722ed1' }} />
-              <Link href={record.website} target="_blank" style={{ fontSize: '12px' }}>
-                Site web
-              </Link>
-            </Space>
-          ) : null}
-        </Space>
-      ),
+      width: 250,
+      fixed: 'left',
+      render: (text) => <Text strong>{text}</Text>,
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'Localisation',
@@ -259,19 +223,154 @@ function UsineList({ fetchFunction, active }) {
       width: 200,
       render: (_, record) => (
         <Space direction="vertical" size="small">
-          {record.city ? (
-            <Space size="small">
-              <EnvironmentOutlined style={{ color: '#faad14' }} />
-              <Text style={{ fontSize: '12px' }}>{record.city}</Text>
+          {record.address && (
+            <Space>
+              <EnvironmentOutlined style={{ color: '#1890ff' }} />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                {record.address}
+              </Text>
             </Space>
-          ) : null}
-          {record.address ? (
-            <Text type="secondary" style={{ fontSize: '11px', display: 'block', maxWidth: '200px' }} ellipsis>
-              {record.address}
-            </Text>
-          ) : null}
+          )}
+          {record.city && (
+            <Tag color="blue">{record.city}</Tag>
+          )}
         </Space>
       ),
+    },
+    {
+      title: 'Pays',
+      dataIndex: 'country',
+      key: 'country',
+      width: 120,
+      render: (country) => (
+        country ? (
+          <Tag color="geekblue">{country}</Tag>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+      sorter: (a, b) => (a.country || '').localeCompare(b.country || ''),
+    },
+    {
+      title: 'Mot-clé',
+      dataIndex: 'searchKeyword',
+      key: 'searchKeyword',
+      width: 180,
+      render: (keyword) => (
+        keyword ? (
+          <Tag color="purple" style={{ fontSize: '11px' }}>
+            {keyword}
+          </Tag>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+      sorter: (a, b) => (a.searchKeyword || '').localeCompare(b.searchKeyword || ''),
+    },
+    {
+      title: 'Téléphone',
+      key: 'phones',
+      width: 180,
+      render: (_, record) => (
+        record.phones && record.phones.length > 0 ? (
+          <Space direction="vertical" size="small">
+            {record.phones.map((phone, idx) => (
+              <Link key={idx} href={`tel:${phone}`}>
+                <PhoneOutlined style={{ color: '#52c41a', marginRight: 4 }} />
+                {phone}
+              </Link>
+            ))}
+          </Space>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+    },
+    {
+      title: 'Email',
+      key: 'emails',
+      width: 200,
+      render: (_, record) => (
+        record.emails && record.emails.length > 0 ? (
+          <Space direction="vertical" size="small">
+            {record.emails.map((email, idx) => (
+              <Link key={idx} href={`mailto:${email}`}>
+                <MailOutlined style={{ color: '#fa8c16', marginRight: 4 }} />
+                {email}
+              </Link>
+            ))}
+          </Space>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+    },
+    {
+      title: 'Site Web',
+      key: 'website',
+      width: 200,
+      render: (_, record) => (
+        record.website ? (
+          <Link
+            href={record.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            ellipsis
+          >
+            <GlobalOutlined style={{ color: '#1890ff', marginRight: 4 }} />
+            {record.website}
+          </Link>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+    },
+    {
+      title: 'Liens Sociaux',
+      key: 'social',
+      width: 150,
+      render: (_, record) => (
+        record.social && record.social.length > 0 ? (
+          <Space direction="vertical" size="small">
+            {record.social.slice(0, 2).map((link, idx) => (
+              <Link
+                key={idx}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '11px' }}
+                ellipsis
+              >
+                🔗 {link.length > 25 ? `${link.substring(0, 25)}...` : link}
+              </Link>
+            ))}
+            {record.social.length > 2 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                +{record.social.length - 2} de plus
+              </Text>
+            )}
+          </Space>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+    },
+    {
+      title: 'Confiance',
+      dataIndex: 'confidence',
+      key: 'confidence',
+      width: 120,
+      align: 'center',
+      render: (confidence) => (
+        confidence ? (
+          <Tag color={confidence >= 0.7 ? 'green' : confidence >= 0.5 ? 'orange' : 'red'}>
+            {Math.round(confidence * 100)}%
+          </Tag>
+        ) : (
+          <Text type="secondary">-</Text>
+        )
+      ),
+      sorter: (a, b) => (a.confidence || 0) - (b.confidence || 0),
     },
   ];
 
@@ -341,6 +440,26 @@ function UsineList({ fetchFunction, active }) {
             <Col>
               <Button onClick={handleClearFilters}>
                 Effacer les filtres
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                type="default"
+                icon={<DownloadOutlined />}
+                onClick={handleExportCurrentPage}
+                disabled={usines.length === 0}
+              >
+                Exporter Page
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                icon={<FileExcelOutlined />}
+                onClick={handleExportAll}
+                disabled={total === 0}
+              >
+                Exporter Tout ({total})
               </Button>
             </Col>
             <Col>

@@ -827,13 +827,8 @@ export async function getCategoryStatistics(category: 'construction' | 'fourniss
 function usineToDocument(usine: Usine): any {
   const doc: any = {
     name: usine.name,
-    type: usine.type,
-    searchKeyword: (usine as any).searchKeyword || undefined,
-    rating: (usine as any).rating ?? undefined,
-    reviews: (usine as any).reviews ?? undefined,
-    capacity: usine.capacity || undefined,
-    products: usine.products || [],
-    certifications: usine.certifications || [],
+    category: usine.category,
+    searchKeyword: usine.searchKeyword || undefined,
     phones: usine.phones || [],
     emails: usine.emails || [],
     website: usine.website || undefined,
@@ -866,13 +861,8 @@ function documentToUsine(doc: any): Usine {
   return {
     id: doc._id instanceof ObjectId ? doc._id.toString() : doc._id,
     name: doc.name,
-    type: doc.type,
+    category: doc.category || 'usine',
     searchKeyword: doc.searchKeyword,
-    rating: doc.rating,
-    reviews: doc.reviews,
-    capacity: doc.capacity,
-    products: doc.products || [],
-    certifications: doc.certifications || [],
     phones: doc.phones || [],
     emails: doc.emails || [],
     website: doc.website,
@@ -938,12 +928,9 @@ export async function upsertUsine(usine: Omit<Usine, 'id'>): Promise<{ id: strin
       phones: Array.from(new Set([...(existing.phones || []), ...(doc.phones || [])])),
       emails: Array.from(new Set([...(existing.emails || []), ...(doc.emails || [])])),
       social: Array.from(new Set([...(existing.social || []), ...(doc.social || [])])),
-      products: Array.from(new Set([...(existing.products || []), ...(doc.products || [])])),
-      certifications: Array.from(new Set([...(existing.certifications || []), ...(doc.certifications || [])])),
       sources: [...(existing.sources || []), ...(doc.sources || [])],
       website: doc.website || existing.website,
       address: doc.address || existing.address,
-      capacity: doc.capacity || existing.capacity,
       lat: doc.lat ?? existing.lat,
       lng: doc.lng ?? existing.lng,
       confidence: Math.max(doc.confidence || 0, existing.confidence || 0),
@@ -993,7 +980,6 @@ export async function getAllUsines(
   offset?: number, 
   city?: string, 
   searchQuery?: string,
-  type?: string,
   keyword?: string
 ): Promise<{
   items: Omit<Usine, 'id'>[];
@@ -1007,10 +993,6 @@ export async function getAllUsines(
     filter.city = { $regex: `^${city}$`, $options: 'i' };
   }
   
-  if (type && type.trim()) {
-    filter.type = type.trim();
-  }
-  
   if (keyword && keyword.trim()) {
     filter.searchKeyword = { $regex: keyword.trim(), $options: 'i' };
   }
@@ -1021,7 +1003,6 @@ export async function getAllUsines(
       { name: searchRegex },
       { address: searchRegex },
       { website: searchRegex },
-      { products: searchRegex },
     ];
   }
 
@@ -1073,27 +1054,27 @@ export async function countUsines(): Promise<number> {
 }
 
 /**
- * Get all unique types from usine collection
+ * Get all unique categories from usine collection
  */
 export async function getAllUsineTypes(): Promise<string[]> {
   const db = await getMongo();
   const collection = db.collection('usine');
 
-  const types = await collection.aggregate([
+  const categories = await collection.aggregate([
     { 
       $match: { 
-        type: { 
+        category: { 
           $exists: true, 
           $ne: null,
           $not: { $eq: '' }
         } 
       } 
     },
-    { $group: { _id: '$type' } },
+    { $group: { _id: '$category' } },
     { $sort: { _id: 1 } },
   ]).toArray();
 
-  return types.map(t => t._id).filter(Boolean).sort();
+  return categories.map(t => t._id).filter(Boolean).sort();
 }
 
 /**

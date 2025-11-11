@@ -90,7 +90,7 @@ export async function placeDetails(placeId: string): Promise<GooglePlaceResult |
  */
 export function placeToCompany(
   place: GooglePlaceResult,
-  category: 'construction' | 'fournisseur',
+  category: 'construction' | 'fournisseur' | 'usine',
   city: string,
   searchKeyword?: string
 ): Company {
@@ -127,8 +127,8 @@ export function placeToCompany(
 export async function searchGooglePlacesForKeywordCity(
   keyword: string,
   city: string,
-  category: 'construction' | 'fournisseur',
-  limit: number = 1000 // High default limit, will paginate through all results
+  category: 'construction' | 'fournisseur' | 'usine',
+  limit: number = 100 // Par défaut 100 résultats par recherche
 ): Promise<Company[]> {
   const query = buildGooglePlacesQuery(keyword, city);
   const companies: Company[] = [];
@@ -136,7 +136,7 @@ export async function searchGooglePlacesForKeywordCity(
   try {
     let pageToken: string | undefined;
     let collected = 0;
-    const maxResults = limit > 100 ? 1000 : limit; // Allow up to 1000 results
+    const maxResults = limit; // Utiliser la limite fournie
 
     // Première recherche
     const firstSearch = await textSearch(query);
@@ -164,7 +164,7 @@ export async function searchGooglePlacesForKeywordCity(
     // Pagination - continue until no more pages or limit reached
     pageToken = firstSearch.nextPageToken;
     let pageCount = 0;
-    const maxPages = 10; // Google Places typically allows up to 3 pages, but we'll try more
+    const maxPages = 5; // Google Places permet jusqu'à 3 pages (60 résultats), mais on essaie d'en obtenir plus
 
     while (pageToken && collected < maxResults && pageCount < maxPages) {
       // Google nécessite un délai de 2 secondes pour le next_page_token

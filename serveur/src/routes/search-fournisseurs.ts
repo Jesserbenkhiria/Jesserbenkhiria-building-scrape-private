@@ -17,7 +17,7 @@ router.post('/search-fournisseurs', async (req: Request, res: Response) => {
   try {
     const {
       cities = GOVERNORATES, // Par défaut toutes les villes
-      limitPerQuery = 300,
+      limitPerQuery = 100, // 100 résultats par recherche (Google Places max ~60)
     } = req.body;
 
     console.log('🔍 Recherche FOURNISSEURS via Google Places');

@@ -84,8 +84,8 @@ function DashboardUsine({ active }) {
     count: item.count,
   }));
 
-  const typeData = (stats.byType || []).map(item => ({
-    type: item.type,
+  const keywordData = (stats.topKeywords || []).map(item => ({
+    keyword: item.keyword,
     count: item.count,
   }));
 
@@ -153,7 +153,7 @@ function DashboardUsine({ active }) {
         </Col>
       </Row>
 
-      {/* Row 1: Usines par ville & Usines par type */}
+      {/* Row 1: Usines par ville & Usines par mot-clé */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
           <Card title={<><EnvironmentOutlined /> Usines par Ville</>} style={{ height: '100%' }}>
@@ -169,26 +169,15 @@ function DashboardUsine({ active }) {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title={<><ShopOutlined /> Usines par Type</>} style={{ height: '100%' }}>
+          <Card title={<><ShopOutlined /> Usines par Mot-clé</>} style={{ height: '100%' }}>
             <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={typeData}
-                  dataKey="count"
-                  nameKey="type"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  fill="#8884d8"
-                  label={(entry) => `${entry.type}: ${entry.count}`}
-                >
-                  {typeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={keywordData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="keyword" angle={-45} textAnchor="end" height={120} />
+                <YAxis />
                 <Tooltip />
-                <Legend />
-              </PieChart>
+                <Bar dataKey="count" fill="#722ed1" />
+              </BarChart>
             </ResponsiveContainer>
           </Card>
         </Col>
@@ -238,24 +227,6 @@ function DashboardUsine({ active }) {
         </Col>
       </Row>
 
-      {/* Row 3: Top Products (si disponibles) */}
-      {stats.topProducts && stats.topProducts.length > 0 && (
-        <Row gutter={[16, 16]}>
-          <Col xs={24}>
-            <Card title={<><ShopOutlined /> Produits les plus fréquents</>}>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={stats.topProducts}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="product" angle={-45} textAnchor="end" height={120} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#722ed1" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
-      )}
     </div>
   );
 }

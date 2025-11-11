@@ -175,14 +175,14 @@ export async function getCities(category = 'construction') {
 }
 
 /**
- * Get unique types from usines endpoint (for filter dropdown)
+ * Get unique categories from usines endpoint (for filter dropdown)
  */
-export async function getUsineTypes() {
+export async function getUsineCategories() {
   try {
-    const response = await apiClient.get('/usine/types');
-    return response.data.types || [];
+    const response = await apiClient.get('/usine/categories');
+    return response.data.categories || [];
   } catch (error) {
-    console.error('Error fetching usine types:', error);
+    console.error('Error fetching usine categories:', error);
     return [];
   }
 }
